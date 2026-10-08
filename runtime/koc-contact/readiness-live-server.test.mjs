@@ -26,6 +26,10 @@ test('status separates old completed history by stable start identity, never led
  try{
   let value=await get();assert.equal(value.run,undefined);assert.equal(value.sourceUpdate,undefined);assert.equal(value.history.run.state,'completed');assert.equal(value.history.sourceUpdate.state,'completed');
   await fs.utimes(path.join(oldDir,'ledger.json'),new Date(),new Date());value=await get();assert.equal(value.run,undefined);assert.equal(value.history.run.state,'completed');
+  const oldReceiptPath=path.join(root,batch+'.write-receipt.json'),oldReceipt=await fs.readFile(oldReceiptPath,'utf8');
+  await fs.rm(oldReceiptPath);value=await get();assert.equal(value.sourceUpdate,undefined);assert.equal(value.history.sourceUpdate.state,'unknown');
+  await fs.writeFile(oldReceiptPath,oldReceipt);value=await get();assert.equal(value.sourceUpdate,undefined);assert.equal(value.history.sourceUpdate.state,'completed');
+
   const {readLiveRun,readSourceUpdate}=await import('./readiness-live-server.mjs');assert.equal((await readLiveRun(root)).runId,oldId);assert.equal((await readLiveRun(root)).startedAt,'2026-10-08T00:00:00.000Z');assert.equal((await readSourceUpdate(root)).startedAt,'2026-10-08T00:00:00.000Z');
   await ledger(oldId,Date.parse('2026-10-08T00:00:00Z'),'running');value=await get();assert.equal(value.run.state,'paused');assert.equal(value.history.run,undefined);
   await ledger(oldId,Date.parse('2026-10-08T00:00:00Z'),'complete');value=await get();assert.equal(value.run.state,'completed');assert.equal(value.history.run,undefined);

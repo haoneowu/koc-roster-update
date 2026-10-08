@@ -47,7 +47,7 @@
     "koc-contact/parallel-production-adapter.mjs": "0f622ef93ad1f1e4fe0f8017cdaa7bb2896aaa678f786977e3857245de703191",
     "koc-contact/playwright-cli-contract.mjs": "13bdc042d8151c15b87deed53f7f3900d77c2465c4330f88ebb425ff58cd3c67",
     "koc-contact/readiness-live-probe.mjs": "e5a892e1cbfe2369e1185e2411e32c6fc44f8222c48f5bbc5ca88c8b037b2483",
-    "koc-contact/readiness-live-server.mjs": "b7b5690d9bbd82d2dee4a698977e6fcb399e4a63f963b0e503667c4ee91d600c",
+    "koc-contact/readiness-live-server.mjs": "e22bb344e2d015fd3ef5f73ef6f1f199416a2a5d2f78b91b8ee90091ccc8e0c4",
     "koc-contact/retry-exclusions.mjs": "2635b2614c1963d7f2f647dc5bad377e4113e2cee5cf1ffd0a7038248f4551af",
     "koc-contact/run-canary-parallel-production.mjs": "f167906e3db30a4b0bffd7b6b4fb40e4a4a7abebc639d4e91e769f0e22419284",
     "koc-contact/run-canary-production.mjs": "f4c96ca9a60ce744ca77aa3a636837f85aad84fc92a4d1f71227f732de2d17ec",

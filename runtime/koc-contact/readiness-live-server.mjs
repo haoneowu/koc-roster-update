@@ -78,9 +78,14 @@ export function createReadinessServer({statusPath,htmlPath,probePath=path.join(i
   for(const [key,read,idKey] of [['run',readLiveRun,'runId'],['sourceUpdate',readSourceUpdate,'batchId']]){
    let value;try{value=await read(inventoryRoot);}catch{continue;}
    if(!value)continue;
-   const identity=`${key}:${value[idKey]}`;
-   const current=value.state!=='completed'||session.has(identity)||value.startedAt&&Date.parse(value.startedAt)>=Date.parse(since);
-   if(current){session.add(identity);snapshot[key]=value;}else history[key]=value;
+   const id=value[idKey],identity=typeof id==='string'&&id?`${key}:${id}`:null;
+   const observedCurrent=identity!==null&&session.has(identity);
+   const startedThisPage=Boolean(value.startedAt&&Date.parse(value.startedAt)>=Date.parse(since));
+   // Missing source receipts are unknown, not proof that a source job is active.
+   // They must never seed an identity that promotes old completion into this page.
+   const explicitlyActive=key==='run'?value.state!=='completed':value.state==='running';
+   const current=explicitlyActive||observedCurrent||startedThisPage;
+   if(current){if(identity)session.add(identity);snapshot[key]=value;}else history[key]=value;
   }
   const projectedHistory=publicStatus({...snapshot,run:history.run,sourceUpdate:history.sourceUpdate});
   return send(200,{...publicStatus(snapshot),history:Object.fromEntries(['run','sourceUpdate'].filter(k=>projectedHistory[k]).map(k=>[k,projectedHistory[k]])),baseUrl:getBaseUrl()});
