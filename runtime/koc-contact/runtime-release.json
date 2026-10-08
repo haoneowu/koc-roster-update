@@ -26,7 +26,7 @@
     "bootstrap-background.mjs": "ef2a8428aa81409f3a7a99e3775736f499eda97d642e2dee926702a0fe50b614",
     "capture-source-session.mjs": "179500e39cfad65c11d5aac09fce5d32baac8b3e7c73ad5015b9bf0dcb385268",
     "connect-browser.mjs": "ace7815ea550489c89222ad86b3b584a63949917bc0e136d8237105f2dd8426d",
-    "initialize-base.mjs": "8af84ff269f4a953531d811c0abd56f6e8a395a295b272e8a0b1681ed03fccaa",
+    "initialize-base.mjs": "9e03ab5c1a5593c86841775fa737cc4992e0595a50d3db654b33336a7a33ceaf",
     "koc-contact/buyin-contact-flow.mjs": "67fdf76f8921438be686009d0f5c338535e7480d59e07872dda93593f74aadf2",
     "koc-contact/buyin-id-result.mjs": "9b516379fb7a98dcad6991c729e93bfbba27d5d5055e97a496d8892e385a2069",
     "koc-contact/buyin-original-background-driver.mjs": "9b872e3455cffea7df8a79e858ce56e8fdf4e3b227258f2b4465886d7ff42011",

@@ -106,3 +106,21 @@ test('background bootstrap creates only missing targets and verifies all ten wit
  assert.equal(calls.filter(([name])=>name==='Target.closeTarget').length,10);
  ready=0;await assert.rejects(bootstrapBackground({context:()=>({browser:()=>({})})},options),/CDP_UNAVAILABLE/);
 });
+
+
+test('Base initialization preserves compatible existing contact-status single selects',async()=>{
+ const {initializeBase,PORTABLE_BASE_FIELDS}=await import('../initialize-base.mjs');
+ for(const status of [{type:'text'},{type:1},{type:'single_select'},{type:'singleselect'},{type:3},{type:'select',multiple:false}]){
+  const fields=structuredClone(PORTABLE_BASE_FIELDS);Object.assign(fields.find(f=>f.name==='本次联系方式状态'),status);
+  const client={listFields:()=>({fields}),createField:()=>{throw Error('existing schema must not be mutated');}};
+  assert.equal((await initializeBase({client})).passed,true);
+  assert.deepEqual((await initializeBase({client,apply:true})).created,[]);
+  assert.equal(fields.find(f=>f.name==='本次联系方式状态').type,status.type);
+ }
+ for(const status of [{type:'select'},{type:'select',multiple:true},{type:'multi_select'},{type:4},{type:'number'}]){
+  const fields=structuredClone(PORTABLE_BASE_FIELDS);Object.assign(fields.find(f=>f.name==='本次联系方式状态'),status);
+  const client={listFields:()=>({fields}),createField:()=>{throw Error('incompatible schema must not be mutated');}};
+  await assert.rejects(initializeBase({client,apply:true}),/KOC_BASE_SCHEMA_TYPE_MISMATCH/);
+ }
+ assert.equal(PORTABLE_BASE_FIELDS.find(f=>f.name==='本次联系方式状态').type,'text');
+});
