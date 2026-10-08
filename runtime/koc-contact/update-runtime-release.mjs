@@ -202,7 +202,7 @@ async function writeAtomically(file,contents){
 }
 
 /** Build a local, SHA-pinned release manifest for all KOC runtime modules. */
-export async function updateKocRuntimeRelease({root=DEFAULT_ROOT,skillVersion='0.6.1',
+export async function updateKocRuntimeRelease({root=DEFAULT_ROOT,skillVersion='0.6.2',
   date=new Date().toISOString().slice(0,10),runtimeEntries=DEFAULT_RUNTIME_ENTRIES,
   changeSummary='Preserve retry provenance, use a canonical Buyin detail route for missing temporary templates, and report fixed-session preflight failures safely.'}={}){
   if(Number(process.versions.node.split('.')[0])!==SUPPORTED_NODE_MAJOR)

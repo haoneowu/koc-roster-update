@@ -4,10 +4,10 @@ description: 为 KOC 商务更新已授权达人库存的微信信息。引导�
 metadata:
   title: 达人微信收集任务助手
   owner: APU Workshop
-  version: 0.6.1
+  version: 0.6.2
   status: candidate
   updated: 2026-10-08
-  runtime_release: 0.2.59
+  runtime_release: 0.2.60
 ---
 
 # 达人微信收集任务助手
@@ -61,3 +61,5 @@ npm run koc:daily -- --run
 
 - 2026-10-08：0.6.0，补齐运行源码、Windows安装/配置与跨平台检查，去掉作者路径和飞书资源绑定。
 - 2026-10-08：0.5.58，商务引导与准备状态页面。
+
+- 2026-10-08：0.6.2，移除任务页签和打开成功提示；未开始仅显示准备提示，保留Windows系统浏览器打开及安装支持。
