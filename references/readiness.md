@@ -58,3 +58,8 @@ HTML 仍支持内嵌 `readiness-snapshot` 作为离线参考：用 `JSON.stringi
 服务增加sourceUpdate（绑定最新来源批次的入库回执）及run.results（仅核验完成项计业务结果，其余分技术失败、未知写入、未处理）。不输出身份、联系人或原始回执。
 
 - 2026-10-08：移除冗余说明及刷新控件。未登录、Playwright未授权、未安装以明确红色状态展示；实际连接丢失显示Playwright未连接，不冒称网站退出或授权失效。未满足项提示“请按 Agent 引导操作”。
+
+## 本次与历史（0.6.1）
+页面用 sessionStorage 保存本页首次打开时间，刷新不重置。/status?since=ISO 分区当前任务及 history；历史完成结果不混入当前。保留原始ledger和checkpoint。打开飞书表使用同源POST /open-base及X-KOC-Open-Base:1；服务仅打开配置表URL，客户端不提交URL。
+
+- 2026-10-08：本次与历史分区、默认系统浏览器跳转。

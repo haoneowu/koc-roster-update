@@ -1,9 +1,14 @@
+import {openBaseInBrowser} from '../shared/open-base.mjs';
 import {DATA_DIR,feishuBaseUrl} from '../shared/config.mjs';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {spawn} from '../shared/child-process.mjs';
 import {fileURLToPath} from 'node:url';
+
+const stableDate=value=>{if(typeof value==='number'&&Number.isFinite(value)||typeof value==='string'&&Number.isFinite(Date.parse(value)))try{return new Date(value).toISOString();}catch{}return null;};
+const batchDate=id=>{const m=String(id).match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);return m?stableDate(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`):null;};
+const runDate=id=>{const m=String(id).match(/^run-(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/);return m?stableDate(`${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z`):null;};
 
 const resultKeys=['success','not_shown','no_match','forbidden_by_platform','technicalFailure','unknownWrite','pending'];
 export function summarizeResults(entries){
@@ -17,17 +22,17 @@ export function summarizeResults(entries){
 }
 export async function readSourceUpdate(root){
  const names=(await fs.readdir(root)).filter(n=>/^\d{8}T\d{6}Z\.checkpoint\.json$/.test(n)).sort();
- if(!names.length)return {state:'unknown'};
+ if(!names.length)return null;
  const name=names.at(-1),batch=name.split('.')[0],base=await fs.realpath(root);
  const read=async n=>{const f=path.join(root,n);if(path.dirname(await fs.realpath(f))!==base)throw Error('source escapes root');return JSON.parse(await fs.readFile(f,'utf8'))};
- const checkpoint=await read(name);let receipt;try{receipt=await read(batch+'.write-receipt.json')}catch{return {state:'unknown',observedAt:checkpoint.finishedAt||checkpoint.startedAt}};
+ const checkpoint=await read(name);const sourceIdentity={batchId:batch,startedAt:stableDate(checkpoint.startedAt)||batchDate(batch)};let receipt;try{receipt=await read(batch+'.write-receipt.json')}catch{return {...sourceIdentity,state:'unknown',observedAt:checkpoint.finishedAt||checkpoint.startedAt}};
  if(receipt.batchId!==batch||receipt.mode!=='daily-add-only')throw Error('invalid source receipt');
  const total=receipt.plannedCount,completed=receipt.readbackVerifiedCount;
  if(![total,completed].every(n=>Number.isInteger(n)&&n>=0)||completed>total)throw Error('invalid source counts');
  const done=receipt.status==='complete'&&completed===total&&receipt.unknownWriteCount===0;
  const selected=receipt.sourceEvidence?.sourceRankedRows;
  const added=Math.min(completed,(receipt.createdCount||0)+(receipt.recoveredWriteCount||0));
- return {state:done?'completed':'unknown',completed,total,added,...(Number.isInteger(selected)&&selected>=0?{selected}:{}),observedAt:receipt.finishedAt||receipt.startedAt};
+ return {...sourceIdentity,state:done?'completed':'unknown',completed,total,added,...(Number.isInteger(selected)&&selected>=0?{selected}:{}),observedAt:receipt.finishedAt||receipt.startedAt};
 }
 
 export async function readLiveRun(root){
@@ -42,7 +47,7 @@ export async function readLiveRun(root){
  const completed=ledger.entries.filter(e=>e.complete===true&&e.writeState==='verified'&&e.readbackVerified===true).length;
  const inFlight=ledger.entries.filter(e=>e.state==='in_flight').length;
  let running=false;try{const lock=JSON.parse(await fs.readFile(path.join(root,'contact-canary-original-20260923/production.lock'),'utf8'));if(lock.mode==='daily-inventory'&&Number.isSafeInteger(lock.pid)&&lock.pid>0){process.kill(lock.pid,0);running=true}}catch{}
- const run={results:summarizeResults(ledger.entries),state:running?(ledger.cooldown?'cooldown':'running'):'paused',actualLanes:running?Math.min(inFlight,10):0,targetLanes:10,completed,total:ledger.entries.length,inFlight,observedAt:stat.mtime.toISOString()};
+ const run={runId:pointer.id,startedAt:stableDate(ledger.startedAtMs)||runDate(pointer.id),results:summarizeResults(ledger.entries),state:running?(ledger.cooldown?'cooldown':'running'):'paused',actualLanes:running?Math.min(inFlight,10):0,targetLanes:10,completed,total:ledger.entries.length,inFlight,observedAt:stat.mtime.toISOString()};
  if(ledger.status==='complete'&&completed===run.total){const receipt=JSON.parse(await fs.readFile(path.join(realDir,'independent-readback.json'),'utf8'));if(receipt.allVerified===true){run.state='completed';run.readbackVerified=true;run.actualLanes=0}}
  if(ledger.cooldown&&Number.isFinite(ledger.cooldown.nextEligibleAt))run.nextProbeAt=ledger.cooldown.nextEligibleAt;
  if(!running&&ledger.lastStop?.reason==='PARALLEL_CURRENT_INDEX_UNVERIFIED')run.reasonCode='BASE_READ_UNAVAILABLE';
@@ -58,13 +63,34 @@ export function publicStatus(s){
  if(s.run){const r=s.run;if(r.inFlight!==undefined&&(!Number.isInteger(r.inFlight)||r.inFlight<0))throw Error('invalid in-flight count');if(!['running','cooldown','paused','completed'].includes(r.state)||![r.actualLanes,r.targetLanes,r.completed,r.total].every(Number.isInteger)||r.targetLanes!==10||r.actualLanes<0||r.actualLanes>10||r.completed<0||r.total<r.completed||r.observedAt!==undefined&&!validDate(r.observedAt)||r.nextProbeAt!==undefined&&!(typeof r.nextProbeAt==='number'&&Number.isFinite(r.nextProbeAt)||validDate(r.nextProbeAt))||r.readbackVerified!==undefined&&typeof r.readbackVerified!=='boolean')throw Error('invalid run');out.run=Object.fromEntries(['state','actualLanes','targetLanes','completed','total','nextProbeAt','readbackVerified','observedAt','inFlight'].filter(k=>r[k]!==undefined).map(k=>[k,r[k]]));if(r.results){if(resultKeys.some(k=>!Number.isInteger(r.results[k])||r.results[k]<0)||resultKeys.reduce((n,k)=>n+r.results[k],0)!==r.total)throw Error('invalid result counts');out.run.results=Object.fromEntries(resultKeys.map(k=>[k,r.results[k]]));}if(r.reasonCode)out.run.reason={BROWSER_CAPACITY_UNAVAILABLE:'十路后台页面尚未全部就绪，助手正在恢复',BASE_READ_UNAVAILABLE:'飞书名单读取暂未完成',AUTH_REQUIRED:'请完成对应网站登录',RATE_LIMITED:'平台暂时限制查询'}[r.reasonCode]||'助手正在核查待处理事项';}
  return out;
 }
-export function createReadinessServer({statusPath,htmlPath,probePath=path.join(import.meta.dirname,'readiness-live-probe.mjs'),port=18765,refresh,inventoryRoot=path.dirname(statusPath)}={}){
- let inflight;const origin=`http://127.0.0.1:${port}`;
+export function createReadinessServer({statusPath,htmlPath,probePath=path.join(import.meta.dirname,'readiness-live-probe.mjs'),port=18765,refresh,inventoryRoot=path.dirname(statusPath),openBase=openBaseInBrowser,getBaseUrl=feishuBaseUrl}={}){
+ let inflight;const serverOpenedAt=new Date().toISOString(),sessions=new Map();const origin=`http://127.0.0.1:${port}`;
  const run=()=>{if(!inflight)inflight=Promise.resolve().then(()=>refresh?refresh():new Promise((resolve,reject)=>{const c=spawn(process.execPath,[probePath],{stdio:'ignore',env:{...process.env,KOC_READINESS_STATUS_PATH:statusPath}});const timer=setTimeout(()=>{c.kill('SIGTERM');reject(Error('probe timeout'));},60000);c.on('error',e=>{clearTimeout(timer);reject(e)});c.on('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('probe failed'))})})).finally(()=>{inflight=null});return inflight};
  const server=http.createServer(async(req,res)=>{res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'");const send=(n,x,type='application/json')=>{res.writeHead(n,{'Content-Type':type});res.end(type==='application/json'?JSON.stringify(x):x)};
  if(req.headers.host!==`127.0.0.1:${port}`||(req.headers.origin&&req.headers.origin!==origin)||req.headers['sec-fetch-site']==='cross-site')return send(403,{error:'local access only'});
  try{if(req.method==='GET'&&req.url==='/'){return send(200,await fs.readFile(htmlPath,'utf8'),'text/html; charset=utf-8')}
- if(req.method==='GET'&&req.url==='/status'){const snapshot=JSON.parse(await fs.readFile(statusPath,'utf8'));try{snapshot.run=await readLiveRun(inventoryRoot)}catch{}try{snapshot.sourceUpdate=await readSourceUpdate(inventoryRoot)}catch{snapshot.sourceUpdate={state:'unknown'}}return send(200,{...publicStatus(snapshot),baseUrl:feishuBaseUrl()});}
+ if(req.method==='GET'&&(req.url==='/status'||req.url.startsWith('/status?'))){
+  const requestUrl=new URL(req.url,origin),since=requestUrl.searchParams.get('since')??serverOpenedAt;
+  if([...requestUrl.searchParams.keys()].some(k=>k!=='since')||requestUrl.searchParams.getAll('since').length>1||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/.test(since)||!Number.isFinite(Date.parse(since)))return send(400,{error:'invalid since'});
+  const snapshot=JSON.parse(await fs.readFile(statusPath,'utf8'));delete snapshot.run;delete snapshot.sourceUpdate;delete snapshot.history;
+  let session=sessions.get(since);if(!session){session=new Set();sessions.set(since,session);if(sessions.size>128)sessions.delete(sessions.keys().next().value);}
+  const history={};
+  for(const [key,read,idKey] of [['run',readLiveRun,'runId'],['sourceUpdate',readSourceUpdate,'batchId']]){
+   let value;try{value=await read(inventoryRoot);}catch{continue;}
+   if(!value)continue;
+   const identity=`${key}:${value[idKey]}`;
+   const current=value.state!=='completed'||session.has(identity)||value.startedAt&&Date.parse(value.startedAt)>=Date.parse(since);
+   if(current){session.add(identity);snapshot[key]=value;}else history[key]=value;
+  }
+  const projectedHistory=publicStatus({...snapshot,run:history.run,sourceUpdate:history.sourceUpdate});
+  return send(200,{...publicStatus(snapshot),history:Object.fromEntries(['run','sourceUpdate'].filter(k=>projectedHistory[k]).map(k=>[k,projectedHistory[k]])),baseUrl:getBaseUrl()});
+ }
+ if(req.method==='POST'&&req.url==='/open-base'){
+  if(req.headers.origin!==origin||req.headers['x-koc-open-base']!=='1'||req.headers['sec-fetch-site']&&req.headers['sec-fetch-site']!=='same-origin')return send(403,{error:'same-origin open required'});
+  if(req.headers['transfer-encoding']||Number(req.headers['content-length']||0)!==0)return send(400,{error:'request body not accepted'});
+  const url=getBaseUrl();if(!url)return send(503,{error:'Base is not configured'});
+  await openBase(url);return send(200,{ok:true});
+ }
  if(req.method==='POST'&&req.url==='/refresh'){if(req.headers.origin!==origin||req.headers['x-koc-refresh']!=='1')return send(403,{error:'same-origin refresh required'});await run();return send(200,{ok:true})}
  return send(404,{error:'not found'});
  }catch{return send(503,{error:'检查暂未完成，请重试'})}});

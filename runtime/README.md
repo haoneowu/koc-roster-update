@@ -7,7 +7,7 @@
 - Status: Offline validated; Windows live acceptance pending
 - Updated: 2026-10-08
 
-Runtime release **0.2.58**, skill contract **0.6.0**, Node **26.x**.
+Runtime release **0.2.59**, skill contract **0.6.1**, Node **26.x**.
 
 This directory contains the daily inventory/contact runner, source capture and add-only Base synchronization, readiness HTTP server/probe, their local dependency closure, and the private JSON-file Lark mutation transport. Dependencies outside this directory are the root package's pinned Playwright, Playwright CLI and Lark CLI packages. No external author checkout, customer files, browser sessions, checkpoints, or node_modules are distributed here.
 
