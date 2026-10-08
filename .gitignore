@@ -1,0 +1,7 @@
+node_modules/
+.playwright-cli/
+*.log
+config.local.json
+.env
+.env.*
+!config.example.json

@@ -12,10 +12,10 @@ updated: 2026-10-08
 从项目根目录启动：
 
 ```sh
-node freight-browser-demo/koc-contact/readiness-live-server.mjs
+npm run readiness
 ```
 
-默认私有状态文件：`~/Library/Application Support/DJH Website Tasks/koc-roster-sync/readiness-live.json`。可用 `KOC_READINESS_STATUS_PATH` 固定配置另一私有路径，`KOC_READINESS_HTML_PATH` 指定此 Skill 的 HTML。监听仅 `127.0.0.1:18765`；拒绝其他 Host/Origin，不暴露目录、任意文件或任意命令。
+默认私有状态文件：Windows `%APPDATA%/KOC Roster Update/readiness-live.json`（实际目录由 runtime 的 `KOC_DATA_DIR` 决定）。可用 `KOC_READINESS_STATUS_PATH` 固定配置另一私有路径，`KOC_READINESS_HTML_PATH` 指定此 Skill 的 HTML。监听仅 `127.0.0.1:18765`；拒绝其他 Host/Origin，不暴露目录、任意文件或任意命令。
 
 `readiness-live-probe.mjs` 是项目固定探测器；无命令行参数，接收环境变量 `KOC_READINESS_STATUS_PATH`，原子写入 JSON，成功退出 0。最长 60 秒，一次仅一个探测。不得因探测而采集、写 Base、创建新授权或重复弹窗。
 

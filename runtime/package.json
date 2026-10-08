@@ -1,0 +1,9 @@
+{
+  "name": "koc-portable-runtime",
+  "version": "0.2.58",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26 <27"
+  }
+}

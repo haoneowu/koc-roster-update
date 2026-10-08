@@ -1,0 +1,32 @@
+name: Windows and Linux installation
+on:
+  push:
+  pull_request:
+jobs:
+  installation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - run: node node_modules/@larksuite/cli/scripts/install.js
+      - run: npx --no-install lark-cli --version
+      - run: npx --no-install playwright-cli --version
+      - run: npm test
+      - run: npm run test:runtime
+      - run: node scripts/setup.mjs --help
+      - name: Extract-style install in a directory with spaces
+        run: python -c "import os,shutil; shutil.copytree('.', os.path.join(os.environ['RUNNER_TEMP'], 'KOC install smoke'), ignore=shutil.ignore_patterns('.git','node_modules'))"
+      - run: node scripts/setup.mjs --install
+        working-directory: ${{ runner.temp }}/KOC install smoke
+      - run: npm test
+        working-directory: ${{ runner.temp }}/KOC install smoke
